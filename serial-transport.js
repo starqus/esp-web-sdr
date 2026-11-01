@@ -39,7 +39,7 @@
       return { usbVendorId: this.device.vendorId, usbProductId: this.device.productId };
     }
     async open({
-      baudRate = 115200,
+      baudRate = 921600,
       dataBits = 8,
       stopBits = 1,
       parity = 'none',
