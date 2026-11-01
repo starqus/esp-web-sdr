@@ -242,7 +242,7 @@ class BurstSerialRadio {
     this.captureSamples = null;
     this.droppedCaptures = 0;
     this.spectrumCrcErrors = 0;
-    this.baudRate = 2000000;
+    this.baudRate = 921600;
     this.transport = null;
     this.supportsBaudChange = false;
     this.changingBaud = false;
@@ -462,7 +462,7 @@ class BurstSerialRadio {
     // Only an initial connection resets the board. A baud switch must preserve
     // the running firmware and its volatile UART rate.
     const rates =
-      port.getInfo?.().usbVendorId === 0x303a ? [baudRate] : [...new Set([baudRate, 2000000, 1000000])];
+      port.getInfo?.().usbVendorId === 0x303a ? [baudRate] : [...new Set([baudRate, 921600, 2000000, 1000000])];
     let failure;
     for (const rate of rates) {
       try {
@@ -483,7 +483,7 @@ class BurstSerialRadio {
     }
     throw failure;
   }
-  async connect({ baudRate = 2000000, port = null } = {}) {
+  async connect({ baudRate = 921600, port = null } = {}) {
     if (!port && !SerialConnection.supported())
       throw Error('WebSerial or WebUSB support is required in this browser.');
     if (!isSecureContext) throw Error('Serve this page over HTTPS or localhost.');
@@ -603,8 +603,12 @@ class BurstSerialRadio {
     if (!supported) return;
     await this.command('TRANSPORT?');
     const t = /^TRANSPORT (UART|USB) (\d+)$/.exec(await this.line());
-    if (!t || (t[1] === 'UART' ? Number(t[2]) !== this.baudRate : Number(t[2]) !== 0))
+    if (!t) throw Error('Invalid serial transport response');
+    if (t[1] === 'UART') {
+      this.baudRate = Number(t[2]);
+    } else if (Number(t[2]) !== 0) {
       throw Error('Invalid serial transport response');
+    }
     this.transport = t[1];
     this.supportsBaudChange = this.transport === 'UART';
   }
@@ -698,7 +702,7 @@ class BurstSerialRadio {
       try {
         if (!this.port || !this.supportsBaudChange || this.transport !== 'UART')
           throw Error('Update ESP-SDR firmware to enable UART baud changes.');
-        if (![1000000, 2000000].includes(baudRate)) throw Error('Choose 1 or 2 MBaud.');
+        if (![921600, 1000000, 2000000].includes(baudRate)) throw Error('Choose 921600, 1 or 2 MBaud.');
         if (baudRate === this.baudRate) return;
         const port = this.port;
         await this.synchronize();
